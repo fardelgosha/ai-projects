@@ -1,6 +1,6 @@
-# AI System Architect Journey
+# AI Projects
 
-This repository documents my hands-on implementations and study of modern AI systems.
+This repository contains implementation-based projects developed while studying modern machine learning and AI systems.
 
 ## Projects
 - MNIST MLP in PyTorch (fully implemented from scratch)
