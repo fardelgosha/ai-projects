@@ -1,6 +1,7 @@
 import time
 from itertools import pairwise
 from typing import Tuple
+import typer
 import torch
 from torch import Tensor
 import torch.nn as nn
@@ -11,6 +12,7 @@ from dataclasses import dataclass, field, fields, replace
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
+app = typer.Typer()
 
 plt.rcParams["font.family"] = "sans-serif"
 plt.rcParams["font.sans-serif"] = ["Arial"]
@@ -62,19 +64,19 @@ class Metric:
 class MetricTracker:
     grad: Metric = field(
         default_factory=lambda: Metric(
-            description="Average Gradient Norm", plot_label="$L_2$ Norm"
+            description="Average Gradient Norm", plot_label="$\ell_2$ Norm"
         )
     )
 
     param: Metric = field(
         default_factory=lambda: Metric(
-            description="Average Parameters Norm", plot_label="$L_2$ Norm"
+            description="Average Parameters Norm", plot_label="$\ell_2$ Norm"
         )
     )
 
     grad_to_param_ratio: Metric = field(
         default_factory=lambda: Metric(
-            description="Average Gradient $L_2$ Norm to Parameters $L_2$ Norm",
+            description="Average Gradient $\ell_2$ Norm to Parameters $\ell_2$ Norm",
             plot_label="Relative Norms",
         )
     )
@@ -103,8 +105,8 @@ class MetricTracker:
 
 
 class MLPTrainer:
-    def __init__(self, mlp_config: MLPConfig, mlp: MLP):
-        self.config = mlp_config
+    def __init__(self, config: MLPConfig, mlp: MLP):
+        self.config = config
 
         train_dataset = datasets.MNIST(
             root=self.config.data_storage_path,
@@ -112,6 +114,7 @@ class MLPTrainer:
             download=True,
             transform=self.config.transform,
         )
+        print(f"Train dataset size: {len(train_dataset):,}")
 
         self.train_loader = DataLoader(
             train_dataset, batch_size=self.config.batch_size, shuffle=True
@@ -158,8 +161,8 @@ class MLPTrainer:
 
 
 class MLPEvaluator:
-    def __init__(self, mlp_config: MLPConfig, mlp: MLP):
-        self.config = mlp_config
+    def __init__(self, config: MLPConfig, mlp: MLP):
+        self.config = config
 
         test_dataset = datasets.MNIST(
             root=self.config.data_storage_path,
@@ -167,6 +170,7 @@ class MLPEvaluator:
             download=True,
             transform=self.config.transform,
         )
+        print(f"Test dataset size: {len(test_dataset):,}")
 
         self.test_loader = DataLoader(
             test_dataset, batch_size=self.config.batch_size, shuffle=False
@@ -187,16 +191,16 @@ class MLPEvaluator:
 
 
 class MLPPlotter:
-    def __init__(self, metrics: dict[str, MetricTracker], mlp_config: MLPConfig):
+    def __init__(self, metrics: dict[str, MetricTracker], config: MLPConfig):
         self.metrics = metrics
-        self.config = mlp_config
+        self.config = config
 
     def plot_metrics(self) -> None:
         _, axes = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
 
         for name, metrics in self.metrics.items():
             steps = [
-                (i + 1) * self.config.model_log_step
+                (i + 1) * self.config.model_log_step * self.config.batch_size
                 for i in range(len(metrics.grad.history))
             ]
 
@@ -214,20 +218,32 @@ class MLPPlotter:
                 axes[ax_idx].grid(True, alpha=0.3)
                 axes[ax_idx].legend()
 
-        axes[-1].set_xlabel("Training Batches")
+        axes[-1].set_xlabel("Training Samples")
 
         plt.show()
 
 
-def main() -> None:
-    mlp_config = MLPConfig()
-    # mlp_config = replace(mlp_config, batch_size=128)
-    print(f"Config: {mlp_config}")
+@app.command()
+def main(
+    layers_sizes: str = typer.Option("784, 128, 10", prompt=True, help="Layer sizes"),
+    batch_size: int = typer.Option(64, prompt=True, help="Training batch size"),
+    learning_rate: float = typer.Option(1e-3, prompt=True, help="Learning rate"),
+    epochs: int = typer.Option(1, prompt=True, help="Number of training epochs"),
+) -> None:
+    config = MLPConfig()
+    config = replace(
+        config,
+        layers_sizes=tuple(int(s) for s in layers_sizes.split(",")),
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        epochs=epochs,
+    )
+    print(f"Config: {config}")
 
-    mlp = MLP(mlp_config)
+    mlp = MLP(config)
     print(mlp)
-    mlp_trainer = MLPTrainer(mlp_config, mlp)
-    mlp_evaluator = MLPEvaluator(mlp_config, mlp)
+    mlp_trainer = MLPTrainer(config, mlp)
+    mlp_evaluator = MLPEvaluator(config, mlp)
 
     start = time.perf_counter()
     metrics = mlp_trainer.train()
@@ -235,9 +251,9 @@ def main() -> None:
     end = time.perf_counter()
     print(f"Accuracy: {accuracy}%, train + eval time: {end - start:.3f} sec")
 
-    mlp_plotter = MLPPlotter(metrics, mlp_config)
+    mlp_plotter = MLPPlotter(metrics, config)
     mlp_plotter.plot_metrics()
 
 
 if __name__ == "__main__":
-    main()
+    app()

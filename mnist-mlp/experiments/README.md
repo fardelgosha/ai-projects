@@ -2,7 +2,7 @@
 
 ## General Observations
 
-- Layer 1 contains $128 \times 784 = 100{,}352$ weight parameters, while layer 2 contains $10 \times 128 = 1{,}280$ parameters. Because the L2 norm scales with the number of parameters, the norm of the layer-1 weight matrix is significantly larger than that of layer 2.
+- If the hidden layer has $h$ neurons, then layer 1 contains $784 h$ weight parameters while layer 2 contains $10 h$ parameters. If $h = 128$, then the numbers of weights for layers 1 and 2 are $128 \times 784 = 100{,}352$ and $10 \times 128 = 1{,}280$, respectively. Because the L2 norm scales with the number of parameters, the norm of the layer-1 weight matrix is significantly larger than that of layer 2.
 
 - The norms of gradients are comparatively smaller and fluctuate during training. However, because parameter updates accumulate over many iterations, even modest gradient magnitudes can lead to substantial changes in parameter norms over time.
 
