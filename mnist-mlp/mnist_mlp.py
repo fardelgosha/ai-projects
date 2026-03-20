@@ -27,6 +27,7 @@ class MLPConfig:
     data_storage_path: str = "./data"
     batch_size: int = 64
     learning_rate: float = 1e-3
+    weight_decay: float = 1e-4
     epochs: int = 1
     model_log_step: int = 25  # step size in the number of batches
 
@@ -123,7 +124,9 @@ class MLPTrainer:
 
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.Adam(
-            self.model.parameters(), lr=self.config.learning_rate
+            self.model.parameters(),
+            lr=self.config.learning_rate,
+            weight_decay=self.config.weight_decay,
         )
 
         self.metrics = defaultdict(MetricTracker)
@@ -228,6 +231,7 @@ def main(
     layers_sizes: str = typer.Option("784, 128, 10", prompt=True, help="Layer sizes"),
     batch_size: int = typer.Option(64, prompt=True, help="Training batch size"),
     learning_rate: float = typer.Option(1e-3, prompt=True, help="Learning rate"),
+    weight_decay: float = typer.Option(1e-4, prompt=True, help="Weight decay"),
     epochs: int = typer.Option(1, prompt=True, help="Number of training epochs"),
 ) -> None:
     config = MLPConfig()
@@ -236,6 +240,7 @@ def main(
         layers_sizes=tuple(int(s) for s in layers_sizes.split(",")),
         batch_size=batch_size,
         learning_rate=learning_rate,
+        weight_decay=weight_decay,
         epochs=epochs,
     )
     print(f"Config: {config}")
